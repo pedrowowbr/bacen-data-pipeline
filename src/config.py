@@ -4,5 +4,5 @@ SERIES = {
     433: "ipca",
     189: "inpc",
     1: "dolar_comercial",
-    24364: "taxa_desemprego",
+    24369: "taxa_desemprego",
 }

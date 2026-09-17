@@ -1,6 +1,7 @@
 import os
 from datetime import date
 
+import altair as alt
 import pandas as pd
 import streamlit as st
 from sqlalchemy import create_engine
@@ -43,20 +44,50 @@ df_filtrado = df[
     (df["data"].dt.date >= data_inicial) & (df["data"].dt.date <= data_final)
 ].set_index("data")
 
+
+def grafico(serie: pd.Series, titulo: str) -> None:
+    """Cada série tem sua própria frequência de publicação (diária vs.
+    mensal, com atraso do próprio BACEN) - por isso a data de referência
+    é por gráfico, não uma data única no rodapé, que induziria a achar
+    que todas as séries estão igualmente em dia."""
+    dados = serie.dropna()
+    st.subheader(titulo)
+    if dados.empty:
+        st.line_chart(dados)
+        return
+
+    # st.line_chart arredonda o eixo de tempo pra um limite "bonito"
+    # (ex.: estende até o ano seguinte) - nice=False usa a extensão real
+    # dos dados como domínio, sem precisar informar datas manualmente
+    # (informar domain à mão quebrou o eixo - ver commit anterior).
+    pontos = dados.reset_index()
+    pontos.columns = ["data", "valor"]
+    chart = (
+        alt.Chart(pontos)
+        .mark_line()
+        .encode(
+            x=alt.X("data:T", title=None, scale=alt.Scale(nice=False)),
+            y=alt.Y("valor:Q", title=None),
+        )
+    )
+    st.altair_chart(chart, use_container_width=True)
+    st.caption(f"Última atualização: {dados.index.max().date()}")
+
+
 col1, col2 = st.columns(2)
 with col1:
-    st.subheader("Selic Meta (% a.a.)")
-    st.line_chart(df_filtrado["selic_meta"].dropna())
+    grafico(df_filtrado["selic_meta"], "Selic Meta (% a.a.)")
 with col2:
-    st.subheader("Dólar Comercial (venda)")
-    st.line_chart(df_filtrado["dolar_comercial"].dropna())
+    grafico(df_filtrado["dolar_comercial"], "Dólar Comercial (venda)")
 
 col3, col4 = st.columns(2)
 with col3:
-    st.subheader("IPCA (variação mensal, %)")
-    st.line_chart(df_filtrado["ipca"].dropna())
+    grafico(df_filtrado["ipca"], "IPCA (variação mensal, %)")
 with col4:
-    st.subheader("Taxa de Desemprego (%)")
-    st.line_chart(df_filtrado["taxa_desemprego"].dropna())
+    grafico(df_filtrado["taxa_desemprego"], "Taxa de Desemprego (%)")
 
-st.caption(f"Fonte: SGS/BACEN. Última data disponível: {data_max}")
+st.caption(
+    "Fonte: SGS/BACEN. Selic e dólar são diários; IPCA e desemprego têm "
+    "publicação mensal com atraso natural do próprio BACEN - por isso "
+    "cada gráfico mostra sua própria última data, não uma data única."
+)

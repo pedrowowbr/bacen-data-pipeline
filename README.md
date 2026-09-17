@@ -59,7 +59,7 @@ https://api.bcb.gov.br/dados/serie/bcdata.sgs.{codigo}/dados?formato=json&dataIn
 | 433 | IPCA (variação mensal) |
 | 189 | INPC |
 | 1 | Dólar comercial (venda, diária) |
-| 24364 | Taxa de desemprego (PNAD contínua) |
+| 24369 | Taxa de desemprego (PNAD contínua) |
 
 ## Pipeline
 
