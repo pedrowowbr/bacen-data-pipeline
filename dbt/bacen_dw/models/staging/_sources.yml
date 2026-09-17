@@ -1,0 +1,17 @@
+version: 2
+
+sources:
+  - name: raw
+    schema: raw
+    tables:
+      - name: raw_series
+        columns:
+          - name: codigo
+            data_tests:
+              - not_null
+          - name: data
+            data_tests:
+              - not_null
+          - name: valor
+            data_tests:
+              - not_null

@@ -1,0 +1,10 @@
+version: 2
+
+models:
+  - name: mart_series_wide
+    description: "Uma linha por data, series lado a lado. Fonte para o dashboard."
+    columns:
+      - name: data
+        data_tests:
+          - not_null
+          - unique

@@ -1,0 +1,18 @@
+version: 2
+
+models:
+  - name: stg_series
+    columns:
+      - name: codigo
+        data_tests:
+          - not_null
+      - name: data
+        data_tests:
+          - not_null
+      - name: valor
+        data_tests:
+          - not_null
+      - name: nome_serie
+        description: "Nulo indicaria codigo sem correspondencia no seed series.csv"
+        data_tests:
+          - not_null
