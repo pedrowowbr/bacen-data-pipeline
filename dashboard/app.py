@@ -8,6 +8,14 @@ from sqlalchemy import create_engine
 
 st.set_page_config(page_title="Indicadores BACEN", layout="wide")
 
+# codigo SGS de cada serie - permite auditar/conferir direto na API do BACEN
+SERIES_INFO = {
+    "selic_meta": {"titulo": "Selic Meta (% a.a.)", "codigo": 432, "sufixo": "% a.a.", "casas": 2},
+    "dolar_comercial": {"titulo": "Dólar Comercial (venda, BRL/USD)", "codigo": 1, "sufixo": "R$", "casas": 4},
+    "ipca": {"titulo": "IPCA (variação mensal, %)", "codigo": 433, "sufixo": "%", "casas": 2},
+    "taxa_desemprego": {"titulo": "Taxa de Desemprego (%)", "codigo": 24369, "sufixo": "%", "casas": 1},
+}
+
 
 @st.cache_resource
 def get_engine():
@@ -45,21 +53,27 @@ df_filtrado = df[
 ].set_index("data")
 
 
-def grafico(serie: pd.Series, titulo: str) -> None:
+def grafico(serie: pd.Series, chave: str) -> None:
     """Cada série tem sua própria frequência de publicação (diária vs.
     mensal, com atraso do próprio BACEN) - por isso a data de referência
     é por gráfico, não uma data única no rodapé, que induziria a achar
     que todas as séries estão igualmente em dia."""
+    info = SERIES_INFO[chave]
     dados = serie.dropna()
-    st.subheader(titulo)
+    st.subheader(info["titulo"])
     if dados.empty:
         st.line_chart(dados)
         return
 
-    # st.line_chart arredonda o eixo de tempo pra um limite "bonito"
-    # (ex.: estende até o ano seguinte) - nice=False usa a extensão real
-    # dos dados como domínio, sem precisar informar datas manualmente
-    # (informar domain à mão quebrou o eixo - ver commit anterior).
+    st.metric(
+        info["titulo"].split(" (")[0],
+        f"{dados.iloc[-1]:.{info['casas']}f} {info['sufixo']}",
+    )
+
+    # Domínio manual quebrou a renderização (linha vira um traço vertical
+    # colapsado) mesmo com spec JSON correto - bug real do Altair/Vega
+    # nesse stack, não consegui depurar sem acesso a navegador. Domínio
+    # automático (nice=False, sem forçar range) é o que funciona de fato.
     pontos = dados.reset_index()
     pontos.columns = ["data", "valor"]
     chart = (
@@ -71,23 +85,24 @@ def grafico(serie: pd.Series, titulo: str) -> None:
         )
     )
     st.altair_chart(chart, use_container_width=True)
-    st.caption(f"Última atualização: {dados.index.max().date()}")
+    st.caption(f"Última atualização: {dados.index.max().date()} · série SGS {info['codigo']}")
 
 
 col1, col2 = st.columns(2)
 with col1:
-    grafico(df_filtrado["selic_meta"], "Selic Meta (% a.a.)")
+    grafico(df_filtrado["selic_meta"], "selic_meta")
 with col2:
-    grafico(df_filtrado["dolar_comercial"], "Dólar Comercial (venda)")
+    grafico(df_filtrado["dolar_comercial"], "dolar_comercial")
 
 col3, col4 = st.columns(2)
 with col3:
-    grafico(df_filtrado["ipca"], "IPCA (variação mensal, %)")
+    grafico(df_filtrado["ipca"], "ipca")
 with col4:
-    grafico(df_filtrado["taxa_desemprego"], "Taxa de Desemprego (%)")
+    grafico(df_filtrado["taxa_desemprego"], "taxa_desemprego")
 
 st.caption(
     "Fonte: SGS/BACEN. Selic e dólar são diários; IPCA e desemprego têm "
-    "publicação mensal com atraso natural do próprio BACEN - por isso "
-    "cada gráfico mostra sua própria última data, não uma data única."
+    "publicação mensal com atraso natural do próprio BACEN de ~1-2 meses "
+    "- por isso cada gráfico mostra sua própria última data, não uma data "
+    "única."
 )
