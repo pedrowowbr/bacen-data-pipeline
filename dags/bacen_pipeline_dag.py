@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import logging
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
 from airflow.decorators import dag, task
 from airflow.operators.bash import BashOperator
+
+logger = logging.getLogger(__name__)
 
 from src.config import SERIES
 from src.extract.bacen_extractor import extract_series, save_raw
@@ -20,6 +23,22 @@ DBT_PROJECT_DIR = "/opt/airflow/dbt/bacen_dw"
 DBT_FLAGS = f"--project-dir {DBT_PROJECT_DIR} --profiles-dir {DBT_PROJECT_DIR}"
 
 
+def alertar_falha(context: dict) -> None:
+    """Chamado pelo Airflow quando uma task esgota os retries e falha de
+    vez (não a cada retry individual). Hoje só loga - fica visível no
+    log da task e do scheduler - mas é o ponto certo pra plugar um
+    webhook do Slack ou e-mail: troca o logger.error por
+    requests.post(SLACK_WEBHOOK_URL, json={...}) sem mexer em mais
+    nada na DAG."""
+    task_id = context["task_instance"].task_id
+    run_id = context["run_id"]
+    logger.error(
+        "ALERTA: task '%s' da DAG 'bacen_pipeline' falhou apos esgotar os retries (run_id=%s)",
+        task_id,
+        run_id,
+    )
+
+
 @dag(
     dag_id="bacen_pipeline",
     description="Extrai, valida e carrega series economicas do BACEN/SGS",
@@ -30,6 +49,7 @@ DBT_FLAGS = f"--project-dir {DBT_PROJECT_DIR} --profiles-dir {DBT_PROJECT_DIR}"
     default_args={
         "retries": 2,
         "retry_delay": timedelta(minutes=1),
+        "on_failure_callback": alertar_falha,
     },
 )
 def bacen_pipeline():

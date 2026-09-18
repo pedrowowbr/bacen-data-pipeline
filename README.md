@@ -117,6 +117,14 @@ ruim.
 Resiliência a falha externa: `retries=2` com `retry_delay=1min` na DAG
 (a API do BACEN já apresentou timeout de rede durante o desenvolvimento).
 
+**E se a API cair de vez, sem se recuperar nos retries?** `on_failure_callback`
+(`alertar_falha` em `bacen_pipeline_dag.py`) dispara quando uma task esgota
+os retries — hoje ele loga um erro estruturado (visível no log da task e
+do scheduler); o ponto de extensão pra Slack/e-mail já existe, só falta
+trocar o `logger.error` por uma chamada de webhook real quando eu tiver
+uma credencial pra testar de verdade — não quis simular um Slack que eu
+não conseguiria validar.
+
 ## How to Run
 
 ```bash
@@ -190,3 +198,5 @@ from marts.mart_series_wide;
 - Dynamic task mapping no Airflow (uma task por série, em vez de um loop
   dentro de `extract_data`) para isolar falha de uma série sem derrubar
   as outras
+- Alerta real (Slack/e-mail) em `alertar_falha` — hoje só loga, o ponto
+  de extensão já existe
