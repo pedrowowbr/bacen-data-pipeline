@@ -94,6 +94,17 @@ codigo | data | valor   codigo | data | valor |    data | selic_meta | ipca | ..
                          nome_serie
 ```
 
+**Limitação conhecida — `raw` não versiona histórico.** `load_raw` faz
+upsert por `(codigo, data)`: se o BACEN revisar um valor histórico
+retroativamente, o valor antigo é sobrescrito no Postgres, não
+preservado. O único rastro de "como o dado chegou naquele dia" é o JSON
+salvo em `data/raw/serie_{codigo}_{data_extracao}.json` (fora do banco,
+sem retenção controlada) — não dá pra reconstruir "qual era o valor que
+eu tinha em 15/01" direto no Postgres hoje. Resolver isso direito exige
+mudar `raw.raw_series` pra append-only (chave `(codigo, data,
+extracted_at)` em vez de upsert) ou um padrão tipo SCD2 — mudança de
+arquitetura, não um ajuste pontual, por isso não fiz agora.
+
 ## Data Quality
 
 Duas camadas de validação, com propósitos diferentes:
@@ -200,3 +211,5 @@ from marts.mart_series_wide;
   as outras
 - Alerta real (Slack/e-mail) em `alertar_falha` — hoje só loga, o ponto
   de extensão já existe
+- `raw.raw_series` append-only (ou SCD2) para preservar valor histórico
+  quando o BACEN revisa uma série retroativamente
