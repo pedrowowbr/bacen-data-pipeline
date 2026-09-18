@@ -100,7 +100,11 @@ Duas camadas de validação, com propósitos diferentes:
 
 1. **Schema (Pydantic, `validate_schema`)** — o registro individual tem o
    formato certo? Tipo, campo obrigatório, data parseável. Roda antes de
-   qualquer escrita no banco.
+   qualquer escrita no banco. **Fail-fast deliberado**: um registro
+   malformado derruba a task inteira (sem log-and-continue), bloqueando
+   `load_raw` e `transform_data` para aquela execução — fonte confiável
+   como o BACEN, schema inesperado é sinal de algo errado que merece
+   parar, não ser mascarado.
 2. **Data quality (dbt test, dentro do `dbt build`)** — o conjunto de
    dados faz sentido? 10 testes: `not_null` nas colunas de `raw`,
    `staging` e `marts`, `unique` na chave da mart, e um teste customizado
